@@ -82,9 +82,9 @@ jobs:
       - name: Push Docker image
         run: |
           echo "Tagging image..."
-          docker tag ai-server-cherry ${{ secrets.DOCKER_USERNAME }}/spring-extension:fastapi-latest
+          docker tag ai-server-cherry ${{ secrets.DOCKER_USERNAME }}/ai-server-cherry:latest
           echo "Pushing image to DockerHub..."
-          docker push ${{ secrets.DOCKER_USERNAME }}/spring-extension:fastapi-latest
+          docker push ${{ secrets.DOCKER_USERNAME }}/ai-server-cherry:latest
           echo "Push completed. Checking if image exists..."
           docker images | grep ai-server-cherry
 
