@@ -1,0 +1,125 @@
+name: AI Server CI/CD
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      # 소스코드 체크아웃
+      - name: Checkout source code
+        uses: actions/checkout@v3
+
+      # Python 3.10 설정
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      # 의존성 설치 및 코드 품질 체크
+      - name: Install dependencies and lint
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install flake8
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    needs: lint
+    if: github.event_name == 'push'
+    steps:
+      # ① 러너의 공인 IP 추출
+      - id: ip
+        name: Get runner public IP
+        run: echo "ipv4=$(curl -s https://checkip.amazonaws.com)" >> $GITHUB_OUTPUT
+
+      # ② SSH 허용 규칙 추가 (배포용 AWS 인증 정보 사용)
+      - name: Authorize SSH from runner
+        run: |
+          aws ec2 authorize-security-group-ingress \
+            --group-id ${{ secrets.EC2_SG_ID }} \
+            --protocol tcp --port 22 \
+            --cidr ${{ steps.ip.outputs.ipv4 }}/32 || true
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_DEPLOYMENT_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_DEPLOYMENT_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEPLOYMENT_REGION }}
+
+      # 소스코드 체크아웃
+      - name: Checkout source code
+        uses: actions/checkout@v3
+
+      # Python 3.10 설정
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      # 의존성 설치
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # Docker 이미지 빌드
+      - name: Build Docker image
+        run: docker build -t ai-server-cherry .
+
+      # DockerHub 로그인
+      - name: Log in to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # DockerHub에 이미지 푸시
+      - name: Push Docker image
+        run: |
+          echo "Tagging image..."
+          docker tag ai-server-cherry ${{ secrets.DOCKER_USERNAME }}/spring-extension:fastapi-latest
+          echo "Pushing image to DockerHub..."
+          docker push ${{ secrets.DOCKER_USERNAME }}/spring-extension:fastapi-latest
+          echo "Push completed. Checking if image exists..."
+          docker images | grep ai-server-cherry
+
+      # EC2에 SSH 접속 후 Docker 컨테이너 실행 (Bedrock용 환경변수 전달)
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # DockerHub 로그인 (Private repository 접근용)
+            echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+            
+            # 최신 이미지 Pull
+            docker pull ${{ secrets.DOCKER_USERNAME }}/ai-server-cherry:latest
+            
+            # 기존 컨테이너 정리
+            docker stop ai-server-cherry-container || true
+            docker rm ai-server-cherry-container || true
+            
+            # 새 컨테이너 실행
+            docker run -d -p 80:8000 --name ai-server-cherry-container \
+              -e GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }} \
+              ${{ secrets.DOCKER_USERNAME }}/ai-server-cherry:latest
+
+      # ③ SSH 허용 규칙 해제 (배포용 AWS 인증 정보 사용)
+      - name: Revoke SSH rule
+        if: always()
+        run: |
+          aws ec2 revoke-security-group-ingress \
+            --group-id ${{ secrets.EC2_SG_ID }} \
+            --protocol tcp --port 22 \
+            --cidr ${{ steps.ip.outputs.ipv4 }}/32 || true
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_DEPLOYMENT_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_DEPLOYMENT_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEPLOYMENT_REGION }} 
