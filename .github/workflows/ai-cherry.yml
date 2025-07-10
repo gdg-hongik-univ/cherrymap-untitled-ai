@@ -89,12 +89,20 @@ jobs:
           docker images | grep ai-server-cherry
 
       # EC2에 SSH 접속 후 Docker 컨테이너 실행 (Bedrock용 환경변수 전달)
+      - name: Test network connectivity
+        run: |
+          echo "Testing connection to EC2 instance..."
+          nc -zv ${{ secrets.EC2_HOST }} 22 || echo "SSH port 22 is not reachable"
+          ping -c 3 ${{ secrets.EC2_HOST }} || echo "Ping failed"
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v0.1.10
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
+          timeout: 60s
+          command_timeout: 15m
           script: |
             # DockerHub 로그인 (Private repository 접근용)
             echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
