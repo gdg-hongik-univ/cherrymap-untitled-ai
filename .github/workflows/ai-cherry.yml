@@ -88,13 +88,6 @@ jobs:
           echo "Push completed. Checking if image exists..."
           docker images | grep ai-server-cherry
 
-      # EC2에 SSH 접속 후 Docker 컨테이너 실행 (Bedrock용 환경변수 전달)
-      - name: Test network connectivity
-        run: |
-          echo "Testing connection to EC2 instance..."
-          nc -zv ${{ secrets.EC2_HOST }} 22 || echo "SSH port 22 is not reachable"
-          ping -c 3 ${{ secrets.EC2_HOST }} || echo "Ping failed"
-
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v0.1.10
         with:
