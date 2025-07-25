@@ -49,7 +49,8 @@ class NavigationChatbotService:
 
 **길 이탈 상황:**
 - "괜찮아요! 함께 올바른 길을 찾아요"
-- "주변에 있는 사람에게 '(목적지)로 가는 길 알려주세요'라고 말해보세요"
+- 목적지가 있으면: "주변에 있는 사람에게 '[목적지명]으로 가는 길 알려주세요'라고 말해보세요"
+- 목적지가 없으면: "주변에 있는 사람에게 '도와주세요'라고 말해보세요"
 - "가장 가까운 지하철역/버스정류장으로 가세요"
 - "역/정류장에서 안내데스크에 물어보세요"
 
@@ -69,6 +70,7 @@ class NavigationChatbotService:
 - 추가 질문 금지 (예: "어디에 계신지 알려주세요")
 - 즉시 해결책 제시
 - 구체적이고 실행 가능한 방법만 안내
+- 목적지 정보가 있으면 구체적인 목적지명을 사용
 - 주변 사람에게 도움 요청하는 구체적 문구 제시
 - 소괄호나 예시 사용 금지
 - 추상적 설명 금지
@@ -167,11 +169,15 @@ class NavigationChatbotService:
         # 기본 정보 (간단하게)
         context_parts = [
             f"위치: {request.location.latitude}, {request.location.longitude}",
-            f"이동수단: {request.transportation_mode}",
+            f"이동수단: {request.mode}",
         ]
         
         if request.destination_address:
             context_parts.append(f"목적지: {request.destination_address}")
+            context_parts.append("중요: 목적지 정보가 있으므로 구체적인 목적지명을 사용하여 답변하세요")
+        else:
+            context_parts.append("목적지: 정보 없음")
+            context_parts.append("중요: 목적지 정보가 없으므로 일반적인 도움 요청 방법을 제시하세요")
         
         if request.user_context:
             context_parts.append(f"상황: {request.user_context}")

@@ -1,15 +1,15 @@
 """
-Google AI Studio 서비스 모듈
+Google AI Studio 서비스
 
-이 모듈은 Google AI Studio와의 통신을 담당합니다.
-채팅 요청 처리, 응답 생성, 헬스 체크 등의 기능을 제공합니다.
+Google AI Studio와의 통신을 담당하는 서비스 모듈입니다.
 """
 
+import os
 import logging
 from typing import Optional
 import google.generativeai as genai
 from app.core.config import settings
-from app.models.schemas import ChatRequest, ChatResponse
+from app.models.schemas import NavigationChatRequest, NavigationChatResponse
 
 # 로거 설정
 logger = logging.getLogger(__name__)
@@ -109,7 +109,7 @@ class GoogleAIService:
         
         return message
     
-    async def generate_response(self, request: ChatRequest) -> ChatResponse:
+    async def generate_response(self, request: NavigationChatRequest) -> NavigationChatResponse:
         """
         Google AI Studio로부터 응답 생성
         
@@ -150,7 +150,7 @@ class GoogleAIService:
             
             logger.info(f"Google AI Studio 응답 생성 완료. 응답 길이: {len(response.text)}")
             
-            return ChatResponse(
+            return NavigationChatResponse(
                 response=response.text,
                 model=settings.google_ai_model
             )
