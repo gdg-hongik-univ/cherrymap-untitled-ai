@@ -8,63 +8,7 @@ Pydantic을 사용하여 데이터 검증과 자동 문서화를 제공합니다
 from typing import Optional
 from pydantic import BaseModel, Field, validator
 
-# ==================== 요청 스키마 ====================
-
-class ChatRequest(BaseModel):
-    """
-    채팅 요청 스키마
-    
-    Google AI Studio와의 채팅을 위한 요청 데이터 구조를 정의합니다.
-    """
-    message: str = Field(
-        ...,
-        description="Google AI Studio에게 전달할 메시지",
-        example="안녕하세요! 오늘 날씨는 어때요?",
-        min_length=1,
-        max_length=10000
-    )
-    
-    @validator('message')
-    def validate_message(cls, v):
-        """메시지 검증"""
-        if not v.strip():
-            raise ValueError('메시지는 비어있을 수 없습니다.')
-        return v.strip()
-    
-    class Config:
-        """Pydantic 설정"""
-        schema_extra = {
-            "example": {
-                "message": "안녕하세요! 간단한 자기소개를 해주세요."
-            }
-        }
-
-# ==================== 응답 스키마 ====================
-
-class ChatResponse(BaseModel):
-    """
-    채팅 응답 스키마
-    
-    Google AI Studio로부터 받은 응답 데이터 구조를 정의합니다.
-    """
-    response: str = Field(
-        ...,
-        description="Google AI Studio로부터 받은 응답",
-        example="안녕하세요! 저는 Google의 Gemini 모델입니다. 무엇을 도와드릴까요?"
-    )
-    model: str = Field(
-        default="gemini-1.5-flash",
-        description="사용된 AI 모델명"
-    )
-    
-    class Config:
-        """Pydantic 설정"""
-        schema_extra = {
-            "example": {
-                "response": "안녕하세요! 저는 Google의 Gemini 모델입니다. 무엇을 도와드릴까요?",
-                "model": "gemini-1.5-flash"
-            }
-        }
+# ==================== 공통 스키마 ====================
 
 class ServerStatus(BaseModel):
     """
@@ -86,8 +30,8 @@ class ServerStatus(BaseModel):
         """Pydantic 설정"""
         schema_extra = {
             "example": {
-                "message": "Cherry AI - Vertex AI LLM Server is running!",
-                "model": "gemini-pro",
+                "message": "Cherry AI - 발달장애인을 위한 내비게이션 챗봇 서버가 실행 중입니다!",
+                "model": "gemini-1.5-flash",
                 "status": "active"
             }
         }
@@ -196,10 +140,9 @@ class NavigationChatRequest(BaseModel):
         description="목적지 주소 (선택사항)",
         example="서울시 강남구 테헤란로 123"
     )
-    transportation_mode: Optional[str] = Field(
-        default="public_transport",
-        description="이동 수단 (public_transport, walking, driving)",
-        example="public_transport"
+    mode: Optional[str] = Field(
+        default="대중교통",
+        description="이동 수단 (도보, 대중교통)"
     )
     user_context: Optional[str] = Field(
         default=None,
@@ -214,10 +157,10 @@ class NavigationChatRequest(BaseModel):
             raise ValueError('메시지는 비어있을 수 없습니다.')
         return v.strip()
     
-    @validator('transportation_mode')
-    def validate_transportation_mode(cls, v):
+    @validator('mode')
+    def validate_mode(cls, v):
         """이동 수단 검증"""
-        valid_modes = ['public_transport', 'walking', 'driving']
+        valid_modes = ['도보', '대중교통']
         if v not in valid_modes:
             raise ValueError(f'지원하지 않는 이동 수단입니다. 지원: {valid_modes}')
         return v
@@ -232,7 +175,7 @@ class NavigationChatRequest(BaseModel):
                     "longitude": 126.9780
                 },
                 "destination_address": "서울시 강남구 테헤란로 123",
-                "transportation_mode": "public_transport",
+                "mode": "대중교통",
                 "user_context": "지하철을 놓쳤어요"
             }
         }
