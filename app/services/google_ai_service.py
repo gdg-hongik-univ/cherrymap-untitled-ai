@@ -32,7 +32,33 @@ class GoogleAIService:
             # Google AI Studio 설정
             genai.configure(api_key=settings.google_api_key)
             
-            # 모델 초기화
+            # 시스템 프롬프트 정의
+            self.system_prompt = """
+당신은 정확하고 신뢰할 수 있는 AI 어시스턴트입니다. 다음 지침을 엄격히 따르세요:
+
+**핵심 원칙:**
+1. **정확성 우선**: 확실하지 않은 정보는 절대 제공하지 마세요. "확실하지 않습니다"라고 솔직히 답변하세요.
+2. **간결성**: 불필요한 말을 하지 말고 핵심만 답변하세요.
+3. **논리성**: 논리적이고 일관된 답변을 제공하세요.
+4. **객관성**: 주관적인 의견보다는 사실에 기반한 답변을 하세요.
+5. **헛소리 금지**: 추측, 상상, 또는 확실하지 않은 정보로 답변하지 마세요.
+
+**답변 스타일:**
+- 명확하고 이해하기 쉽게 답변하세요
+- 필요시 구체적인 예시를 제공하세요
+- 복잡한 주제는 단계별로 설명하세요
+- 사용자의 질문에 직접적으로 답변하세요
+
+**금지사항:**
+- 확실하지 않은 정보 제공
+- 과도하게 긴 답변
+- 주관적인 의견을 사실처럼 표현
+- 추측이나 상상으로 답변
+
+사용자의 질문에 정확하고 유용한 답변을 제공하세요.
+"""
+            
+            # 모델 초기화 (구버전 호환)
             self.model = genai.GenerativeModel(settings.google_ai_model)
             
             logger.info(f"Google AI Studio 서비스 초기화 완료. 모델: {settings.google_ai_model}")
@@ -40,6 +66,48 @@ class GoogleAIService:
         except Exception as e:
             logger.error(f"Google AI Studio 서비스 초기화 실패: {str(e)}")
             raise
+    
+    def _preprocess_prompt(self, message: str) -> str:
+        """
+        사용자 메시지를 전처리하여 더 나은 응답을 생성하도록 개선
+        
+        Args:
+            message (str): 원본 사용자 메시지
+            
+        Returns:
+            str: 전처리된 메시지
+        """
+        # 메시지 정규화
+        message = message.strip()
+        
+        # 메시지가 너무 짧은 경우 구체적인 요청으로 변환
+        if len(message) < 10:
+            return f"다음 질문에 대해 정확하고 간결하게 답변해주세요: {message}"
+        
+        # 메시지가 너무 긴 경우 요약 요청
+        if len(message) > 500:
+            return f"다음 긴 질문에 대해 핵심만 간결하게 답변해주세요: {message[:500]}..."
+        
+        # 특정 질문 유형에 대한 프롬프트 개선
+        lower_message = message.lower()
+        
+        # 사실 확인 질문
+        if any(keyword in lower_message for keyword in ['맞나요', '맞는가', '정확한가', '사실인가']):
+            return f"다음 질문에 대해 사실에 기반하여 정확하게 답변해주세요. 확실하지 않으면 '확실하지 않습니다'라고 답변하세요: {message}"
+        
+        # 의견 요청 질문
+        if any(keyword in lower_message for keyword in ['어떻게 생각하나요', '의견', '생각']):
+            return f"다음 질문에 대해 객관적이고 균형잡힌 관점에서 답변해주세요: {message}"
+        
+        # 설명 요청 질문
+        if any(keyword in lower_message for keyword in ['설명', '이해', '알려주세요', '무엇인가']):
+            return f"다음 질문에 대해 명확하고 이해하기 쉽게 설명해주세요: {message}"
+        
+        # 비교 질문
+        if any(keyword in lower_message for keyword in ['차이', '비교', 'vs', 'versus']):
+            return f"다음 질문에 대해 객관적인 사실에 기반하여 비교해주세요: {message}"
+        
+        return message
     
     async def generate_response(self, request: ChatRequest) -> ChatResponse:
         """
@@ -62,12 +130,21 @@ class GoogleAIService:
         try:
             logger.info(f"Google AI Studio 요청 시작. 메시지 길이: {len(request.message)}")
             
+            # 메시지 전처리
+            processed_message = self._preprocess_prompt(request.message)
+            
+            # 시스템 프롬프트와 사용자 메시지 결합
+            full_prompt = f"{self.system_prompt}\n\n사용자 질문: {processed_message}\n\n답변:"
+            
             # Google AI Studio에 요청 전송 (고정된 설정 사용)
             response = self.model.generate_content(
-                request.message,
+                full_prompt,
                 generation_config=genai.types.GenerationConfig(
-                    temperature=settings.default_temperature,  # 0.3으로 고정
-                    max_output_tokens=settings.default_max_tokens  # 1000으로 고정
+                    temperature=settings.default_temperature,  # 0.2로 낮춤
+                    max_output_tokens=settings.default_max_tokens,  # 1000으로 고정
+                    top_p=0.8,  # 더 일관된 응답을 위해 추가
+                    top_k=40,   # 더 일관된 응답을 위해 추가
+                    candidate_count=1  # 단일 응답만 생성
                 )
             )
             
