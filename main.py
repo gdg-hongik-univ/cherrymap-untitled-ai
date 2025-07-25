@@ -38,7 +38,7 @@ def create_app() -> FastAPI:
         version=settings.api_version,
         contact={
             "name": "Cherry AI",
-            "url": "https://github.com/your-repo/cherry-ai",
+            "url": "https://github.com/gdg-hongik-univ/cherrymap-untitled-ai",
         },
         license_info={
             "name": "MIT License",
@@ -47,7 +47,7 @@ def create_app() -> FastAPI:
         tags_metadata=[
             {
                 "name": "chat",
-                "description": "Google AI Studio와의 채팅 관련 엔드포인트",
+                "description": "발달장애인을 위한 내비게이션 챗봇 엔드포인트",
             },
             {
                 "name": "health",
@@ -69,7 +69,7 @@ async def custom_docs():
     """
     ## API 문서
     
-    이 서버는 자동으로 생성되는 API 문서를 제공합니다.
+    이 서버는 발달장애인을 위한 내비게이션 챗봇 API를 제공합니다.
     
     ### 사용 가능한 문서
     - **Swagger UI**: `/docs` - 대화형 API 문서
@@ -78,9 +78,9 @@ async def custom_docs():
     
     ### 주요 엔드포인트
     - `GET /` - 서버 상태 확인
-    - `POST /chat` - Google AI Studio와 채팅
-    - `GET /health` - 헬스 체크
-    - `GET /info` - 서버 정보
+    - `POST /api/v1/chat` - 내비게이션 챗봇
+    - `GET /api/v1/health` - 헬스 체크
+    - `GET /api/v1/info` - 서버 정보
     
     ### 사용 방법
     1. API 문서에서 엔드포인트를 확인하세요
@@ -94,9 +94,9 @@ async def custom_docs():
         "openapi_schema": "/openapi.json",
         "endpoints": {
             "root": "GET / - 서버 상태 확인",
-            "chat": "POST /chat - Google AI Studio와 채팅",
-            "health": "GET /health - 헬스 체크",
-            "info": "GET /info - 서버 정보"
+            "chat": "POST /api/v1/chat - 내비게이션 챗봇",
+            "health": "GET /api/v1/health - 헬스 체크",
+            "info": "GET /api/v1/info - 서버 정보"
         }
     }
 
