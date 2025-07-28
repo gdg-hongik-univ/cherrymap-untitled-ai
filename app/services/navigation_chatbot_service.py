@@ -36,6 +36,7 @@ class NavigationChatbotService:
 
 **핵심 역할:**
 - 길을 잃었거나 대중교통을 놓친 사용자에게 즉시 해결책을 제공
+- 홈 화면에서의 일반적인 대화나 도움 요청에 친근하게 응답
 - 추가 질문이나 대화 없이 완결된 답변 제공
 - 감정적 지원과 실질적 해결책을 함께 제시
 
@@ -46,6 +47,12 @@ class NavigationChatbotService:
 4. **사회적 상호작용**: 주변 사람에게 도움 요청하는 방법 제시
 
 **주요 상황별 완결 답변:**
+
+**홈 화면 일반 대화:**
+- "안녕하세요! 무엇을 도와드릴까요?"
+- "궁금한 것이 있으시면 언제든 말씀해주세요"
+- "길을 잃거나 교통수단을 놓쳤을 때 도움이 필요하시면 말씀해주세요"
+- "안전하게 이동하는 방법을 알려드릴 수 있어요"
 
 **길 이탈 상황:**
 - "괜찮아요! 함께 올바른 길을 찾아요"
@@ -122,6 +129,17 @@ class NavigationChatbotService:
             "suggested_actions": []
         }
         
+        # 홈 화면 일반 대화 감지
+        if request.mode == "홈":
+            situation["type"] = "home_conversation"
+            situation["urgency"] = "low"
+            situation["needs_reassurance"] = False
+            situation["suggested_actions"] = [
+                "general_conversation",
+                "provide_guidance"
+            ]
+            return situation
+        
         # 길 이탈 상황 감지
         if any(keyword in message for keyword in ['길을 이탈', '길을 잃었', '잘못된 길', '길을 못 찾']):
             situation["type"] = "route_deviation"
@@ -169,8 +187,13 @@ class NavigationChatbotService:
         # 기본 정보 (간단하게)
         context_parts = [
             f"위치: {request.location.latitude}, {request.location.longitude}",
-            f"이동수단: {request.mode}",
         ]
+        
+        # mode가 "홈"이 아닐 때만 이동수단 정보 추가
+        if request.mode != "홈":
+            context_parts.append(f"이동수단: {request.mode}")
+        else:
+            context_parts.append("상황: 홈 화면에서의 일반 대화")
         
         if request.destination_address:
             context_parts.append(f"목적지: {request.destination_address}")
@@ -183,7 +206,9 @@ class NavigationChatbotService:
             context_parts.append(f"상황: {request.user_context}")
         
         # 상황별 즉시 해결책 지침
-        if situation["type"] == "route_deviation":
+        if situation["type"] == "home_conversation":
+            context_parts.append("상황: 홈 화면 일반 대화. 친근하고 도움이 되는 답변 제공")
+        elif situation["type"] == "route_deviation":
             context_parts.append("상황: 길을 이탈함. 즉시 새로운 경로 안내")
         elif situation["type"] == "missed_transport":
             context_parts.append("상황: 교통수단 놓침. 즉시 다음 교통수단 정보 제공")

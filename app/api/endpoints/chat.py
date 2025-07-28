@@ -29,7 +29,8 @@ async def navigation_chat(request: NavigationChatRequest):
       - **latitude**: 위도 (-90.0 ~ 90.0)
       - **longitude**: 경도 (-180.0 ~ 180.0)
     - **destination_address**: 목적지 주소 (선택사항)
-    - **mode**: 이동 수단 (선택사항, 기본값: 대중교통)
+    - **mode**: 이동 수단 (선택사항, 기본값: 홈)
+      - 홈: 홈 화면에서의 일반적인 대화나 도움 요청
       - 도보: 도보로만 이동하는 경로
       - 대중교통: 대중교통 + 도보가 혼합된 경로
     - **user_context**: 사용자 상황 설명 (선택사항)
@@ -51,7 +52,7 @@ async def navigation_chat(request: NavigationChatRequest):
              "longitude": 126.9780
            },
            "destination_address": "서울시 강남구 테헤란로 123",
-           "mode": "대중교통",
+           "mode": "홈",
            "user_context": "버스 정류장에서 버스를 놓쳤어요"
          }'
     ```

@@ -141,8 +141,8 @@ class NavigationChatRequest(BaseModel):
         example="서울시 강남구 테헤란로 123"
     )
     mode: Optional[str] = Field(
-        default="대중교통",
-        description="이동 수단 (도보, 대중교통)"
+        default="홈",
+        description="이동 수단 (도보, 대중교통) 또는 홈 화면에서의 일반 대화 (홈)"
     )
     user_context: Optional[str] = Field(
         default=None,
@@ -157,10 +157,22 @@ class NavigationChatRequest(BaseModel):
             raise ValueError('메시지는 비어있을 수 없습니다.')
         return v.strip()
     
+    @validator('destination_address')
+    def validate_destination_address(cls, v):
+        """목적지 주소 검증"""
+        # 목적지 주소가 빈 문자열이면 None으로 변환
+        if v is not None and v.strip() == "":
+            return None
+        return v
+    
     @validator('mode')
     def validate_mode(cls, v):
         """이동 수단 검증"""
-        valid_modes = ['도보', '대중교통']
+        # mode가 None이거나 빈 문자열이면 기본값 "홈" 사용
+        if v is None or v.strip() == "":
+            return "홈"
+        
+        valid_modes = ['도보', '대중교통', '홈']
         if v not in valid_modes:
             raise ValueError(f'지원하지 않는 이동 수단입니다. 지원: {valid_modes}')
         return v
